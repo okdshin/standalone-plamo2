@@ -30,19 +30,29 @@ jobs:
         choco install unzip -y
         
         # 12.6用の各コンポーネントURLを指定 (最新の12.6.77を使用)
-        curl -O "https://developer.download.nvidia.com/compute/cuda/redist/cuda_cudart/windows-x86_64/cuda_cudart-windows-x86_64-12.6.77-archive.zip"
-        curl -O "https://developer.download.nvidia.com/compute/cuda/redist/cuda_nvcc/windows-x86_64/cuda_nvcc-windows-x86_64-12.6.77-archive.zip"
-        curl -O "https://developer.download.nvidia.com/compute/cuda/redist/cuda_nvrtc/windows-x86_64/cuda_nvrtc-windows-x86_64-12.6.77-archive.zip"
-        curl -O "https://developer.download.nvidia.com/compute/cuda/redist/libcublas/windows-x86_64/libcublas-windows-x86_64-12.6.77-archive.zip"
-        curl -O "https://developer.download.nvidia.com/compute/cuda/redist/cuda_nvtx/windows-x86_64/cuda_nvtx-windows-x86_64-12.6.77-archive.zip"
-        curl -O "https://developer.download.nvidia.com/compute/cuda/redist/cuda_profiler_api/windows-x86_64/cuda_profiler_api-windows-x86_64-12.6.77-archive.zip"
-        curl -O "https://developer.download.nvidia.com/compute/cuda/redist/cuda_cccl/windows-x86_64/cuda_cccl-windows-x86_64-12.6.77-archive.zip"
+        $cudartUrl = "https://developer.download.nvidia.com/compute/cuda/redist/cuda_cudart/windows-x86_64/cuda_cudart-windows-x86_64-12.6.77-archive.zip"
+        $nvccUrl = "https://developer.download.nvidia.com/compute/cuda/redist/cuda_nvcc/windows-x86_64/cuda_nvcc-windows-x86_64-12.6.77-archive.zip"
+        $nvrtcUrl = "https://developer.download.nvidia.com/compute/cuda/redist/cuda_nvrtc/windows-x86_64/cuda_nvrtc-windows-x86_64-12.6.77-archive.zip"
+        $cublasUrl = "https://developer.download.nvidia.com/compute/cuda/redist/libcublas/windows-x86_64/libcublas-windows-x86_64-12.6.77-archive.zip"
+        $nvtxUrl = "https://developer.download.nvidia.com/compute/cuda/redist/cuda_nvtx/windows-x86_64/cuda_nvtx-windows-x86_64-12.6.77-archive.zip"
+        $profilerUrl = "https://developer.download.nvidia.com/compute/cuda/redist/cuda_profiler_api/windows-x86_64/cuda_profiler_api-windows-x86_64-12.6.77-archive.zip"
+        $ccclUrl = "https://developer.download.nvidia.com/compute/cuda/redist/cuda_cccl/windows-x86_64/cuda_cccl-windows-x86_64-12.6.77-archive.zip"
         
+        # 各コンポーネントをダウンロード
+        Write-Host "Downloading CUDA components..."
+        Invoke-WebRequest -Uri $cudartUrl -OutFile "cudart.zip"
+        Invoke-WebRequest -Uri $nvccUrl -OutFile "nvcc.zip"
+        Invoke-WebRequest -Uri $nvrtcUrl -OutFile "nvrtc.zip"
+        Invoke-WebRequest -Uri $cublasUrl -OutFile "cublas.zip"
+        Invoke-WebRequest -Uri $nvtxUrl -OutFile "nvtx.zip"
+        Invoke-WebRequest -Uri $profilerUrl -OutFile "profiler.zip"
+        Invoke-WebRequest -Uri $ccclUrl -OutFile "cccl.zip"
+
         # 全てのZIPファイルを解凍
         Write-Host "Extracting CUDA 12.6 components..."
         Get-ChildItem -Filter "*.zip" | ForEach-Object {
             Write-Host "Extracting $($_.Name)..."
-            unzip $_.Name -d "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6"
+            Expand-Archive -Path $_.FullName -DestinationPath "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6" -Force
         }
         
         # 解凍したファイルをCUDAディレクトリに移動
@@ -50,7 +60,7 @@ jobs:
         Get-ChildItem "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6" -Directory | 
         ForEach-Object {
           Write-Host "Copying files from $($_.FullName)"
-          xcopy "$($_.FullName)\*" "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6" /E /I /H /Y
+          Copy-Item -Path "$($_.FullName)\*" -Destination "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6" -Recurse -Force
         }
         
         # 環境変数の設定
@@ -60,7 +70,7 @@ jobs:
         
         # CUDA環境をチェック
         Write-Host "Checking CUDA installation..."
-        Get-ChildItem "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\bin"
+        Get-ChildItem "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\bin" -ErrorAction SilentlyContinue
 
     # インストール確認
     - name: Verify CUDA installation
