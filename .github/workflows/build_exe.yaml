@@ -21,17 +21,48 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: '3.12'  # 必要なPythonバージョンを指定
-    
-    # CUDA Toolkit のインストール
-    - name: Install CUDA
+
+    # CUDA Toolkit 12.6 コンポーネントのインストール
+    - name: Install CUDA Toolkit 12.6 Components
       shell: powershell
       run: |
-        $ProgressPreference = 'SilentlyContinue'
-        Invoke-WebRequest -Uri "https://developer.download.nvidia.com/compute/cuda/12.1.0/network_installers/cuda_12.1.0_windows_network.exe" -OutFile "cuda_installer.exe"
-        Start-Process -FilePath "cuda_installer.exe" -ArgumentList "-s nvcc_12.1 cudart_12.1 cublas_12.1 cublas_dev_12.1 cudnn_12.1 nvml_dev_12.1 thrust_12.1 visual_studio_integration_12.1" -Wait
-        echo "CUDA_PATH=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.1" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        echo "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.1\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        mkdir -p "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6"
+        choco install unzip -y
         
+        # 12.6用の各コンポーネントURLを指定 (最新の12.6.77を使用)
+        curl -O "https://developer.download.nvidia.com/compute/cuda/redist/cuda_cudart/windows-x86_64/cuda_cudart-windows-x86_64-12.6.77-archive.zip"
+        curl -O "https://developer.download.nvidia.com/compute/cuda/redist/cuda_nvcc/windows-x86_64/cuda_nvcc-windows-x86_64-12.6.77-archive.zip"
+        curl -O "https://developer.download.nvidia.com/compute/cuda/redist/cuda_nvrtc/windows-x86_64/cuda_nvrtc-windows-x86_64-12.6.77-archive.zip"
+        curl -O "https://developer.download.nvidia.com/compute/cuda/redist/libcublas/windows-x86_64/libcublas-windows-x86_64-12.6.77-archive.zip"
+        curl -O "https://developer.download.nvidia.com/compute/cuda/redist/cuda_nvtx/windows-x86_64/cuda_nvtx-windows-x86_64-12.6.77-archive.zip"
+        curl -O "https://developer.download.nvidia.com/compute/cuda/redist/cuda_profiler_api/windows-x86_64/cuda_profiler_api-windows-x86_64-12.6.77-archive.zip"
+        curl -O "https://developer.download.nvidia.com/compute/cuda/redist/cuda_cccl/windows-x86_64/cuda_cccl-windows-x86_64-12.6.77-archive.zip"
+        
+        # 全てのZIPファイルを解凍
+        Write-Host "Extracting CUDA 12.6 components..."
+        Get-ChildItem -Filter "*.zip" | ForEach-Object {
+            Write-Host "Extracting $($_.Name)..."
+            unzip $_.Name -d "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6"
+        }
+        
+        # 解凍したファイルをCUDAディレクトリに移動
+        Write-Host "Copying files to CUDA directory..."
+        Get-ChildItem "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6" -Directory | 
+        ForEach-Object {
+          Write-Host "Copying files from $($_.FullName)"
+          xcopy "$($_.FullName)\*" "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6" /E /I /H /Y
+        }
+        
+        # 環境変数の設定
+        echo "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "CUDA_PATH=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+        echo "CUDA_PATH_V12_6=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+        
+        # CUDA環境をチェック
+        Write-Host "Checking CUDA installation..."
+        Get-ChildItem "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\bin"
+
+    # インストール確認
     - name: Verify CUDA installation
       shell: cmd
       run: |
@@ -42,14 +73,10 @@ jobs:
         echo %CUDA_PATH%
         
         echo Listing CUDA bin directory:
-        if exist "%CUDA_PATH%\bin" (
-          dir "%CUDA_PATH%\bin\nvcc*"
-        ) else (
-          echo CUDA bin directory not found
-        )
+        dir "%CUDA_PATH%\bin"
         
         echo Trying to run nvcc:
-        "%CUDA_PATH%\bin\nvcc" --version || echo NVCC failed
+        "%CUDA_PATH%\bin\nvcc.exe" --version || echo NVCC failed but continuing anyway
 
     # VLLMリポジトリのクローンと特定ブランチへの切り替え
     - name: Clone VLLM repository and checkout add-plamo2 branch
