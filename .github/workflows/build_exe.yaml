@@ -46,7 +46,7 @@ jobs:
         foreach ($component in $cudaComponents) {
           $componentName = $component.Split('-')[0]
           $componentPlatform = $component.Split('-')[1]
-          $url = "https://developer.download.nvidia.com/compute/cuda/redist/$componentName/$componentPlatform/$component"
+          $url = "https://developer.download.nvidia.com/compute/cuda/redist/$componentName/$componentPlatform-x86_64/$component"
           Write-Host "Downloading $component from $url..."
           Invoke-WebRequest -Uri $url -OutFile $component
         }
