@@ -20,7 +20,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.10'  # 必要なPythonバージョンを指定
+        python-version: '3.12'  # 必要なPythonバージョンを指定
     
     # CUDA Toolkit のインストール
     - name: Install CUDA
@@ -32,13 +32,25 @@ jobs:
         echo "CUDA_PATH=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.1" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
         echo "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.1\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         
-    # インストール確認
     - name: Verify CUDA installation
       shell: cmd
       run: |
-        nvcc --version
-        where nvcc
-    
+        echo Current PATH:
+        echo %PATH%
+        
+        echo Checking CUDA_PATH:
+        echo %CUDA_PATH%
+        
+        echo Listing CUDA bin directory:
+        if exist "%CUDA_PATH%\bin" (
+          dir "%CUDA_PATH%\bin\nvcc*"
+        ) else (
+          echo CUDA bin directory not found
+        )
+        
+        echo Trying to run nvcc:
+        "%CUDA_PATH%\bin\nvcc" --version || echo NVCC failed
+
     # VLLMリポジトリのクローンと特定ブランチへの切り替え
     - name: Clone VLLM repository and checkout add-plamo2 branch
       shell: cmd
