@@ -1,0 +1,105 @@
+name: Build API Server with VLLM branch add-plamo2
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # 手動でワークフローを実行できるようにします
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    # リポジトリのチェックアウト
+    - name: Checkout repository
+      uses: actions/checkout@v3
+    
+    # Pythonのセットアップ
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'  # 必要なPythonバージョンを指定
+    
+    # CUDA Toolkit のインストール
+    - name: Install CUDA
+      shell: powershell
+      run: |
+        $ProgressPreference = 'SilentlyContinue'
+        Invoke-WebRequest -Uri "https://developer.download.nvidia.com/compute/cuda/12.1.0/network_installers/cuda_12.1.0_windows_network.exe" -OutFile "cuda_installer.exe"
+        Start-Process -FilePath "cuda_installer.exe" -ArgumentList "-s nvcc_12.1 cudart_12.1 cublas_12.1 cublas_dev_12.1 cudnn_12.1 nvml_dev_12.1 thrust_12.1 visual_studio_integration_12.1" -Wait
+        echo "CUDA_PATH=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.1" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        echo "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.1\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        
+    # インストール確認
+    - name: Verify CUDA installation
+      shell: cmd
+      run: |
+        nvcc --version
+        where nvcc
+    
+    # VLLMリポジトリのクローンと特定ブランチへの切り替え
+    - name: Clone VLLM repository and checkout add-plamo2 branch
+      shell: cmd
+      run: |
+        git clone https://github.com/pfnet/vllm.git
+        cd vllm
+        git fetch --all
+        git checkout add-plamo2
+        echo VLLM repository cloned and switched to add-plamo2 branch
+        git branch --show-current
+        cd ..
+    
+    # Nuitkaと必要な依存関係のインストール
+    - name: Install Nuitka and dependencies
+      shell: cmd
+      run: |
+        python -m pip install --upgrade pip
+        pip install nuitka
+        pip install pefile zstandard ordered-set
+        pip install pywin32
+        
+    # CUDA対応のPytorch及びVLLMの依存関係をインストール（特定のブランチから）
+    - name: Install PyTorch with CUDA and VLLM from add-plamo2 branch
+      shell: cmd
+      run: |
+        pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+        cd vllm
+        pip install -e .
+        cd ..
+    
+    # exeのビルド - onefileオプションを使用し、CUDA対応
+    - name: Build API Server as onefile with Nuitka
+      shell: cmd
+      run: |
+        :: onefileとCUDA対応でビルド
+        python -m nuitka --onefile ^
+          --follow-imports ^
+          --include-package=vllm ^
+          --include-package=torch ^
+          --include-package-data=vllm ^
+          --include-package-data=torch ^
+          --include-data-dir="%CUDA_PATH%\bin=cuda" ^
+          --include-plugin-directory=vllm ^
+          --assume-yes-for-downloads ^
+          --disable-console=no ^
+          --windows-company-name="dummy" ^
+          --windows-product-name="VLLM API Server (add-plamo2)" ^
+          --windows-file-version="1.0.0.0" ^
+          --windows-product-version="1.0.0.0" ^
+          --windows-file-description="VLLM API Server using add-plamo2 branch" ^
+          --mingw64 ^
+          --low-memory ^
+          --jobs=4 ^
+          api_server.py
+        
+        :: ビルド成果物の確認
+        dir *.exe
+    
+    # 成果物のアップロード
+    - name: Upload executable
+      uses: actions/upload-artifact@v3
+      with:
+        name: api-server-onefile-add-plamo2
+        path: api_server.exe
