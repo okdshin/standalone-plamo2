@@ -35,11 +35,11 @@ jobs:
           "cuda_cudart-windows-x86_64-12.6.77-archive.zip",
           "cuda_nvcc-windows-x86_64-12.6.77-archive.zip",
           "cuda_nvrtc-windows-x86_64-12.6.77-archive.zip",
-          "libcublas-windows-x86_64-12.6.77-archive.zip",
+          "libcublas-windows-x86_64-12.6.4.1-archive.zip",
           "cuda_nvtx-windows-x86_64-12.6.77-archive.zip",
           "cuda_profiler_api-windows-x86_64-12.6.77-archive.zip",
           "visual_studio_integration-windows-x86_64-12.6.77-archive.zip",
-          "cuda_nvprof-windows-x86_64-12.6.77-archive.zip",
+          "cuda_nvprof-windows-x86_64-12.6.80-archive.zip",
           "cuda_cccl-windows-x86_64-12.6.77-archive.zip"
         )
         
